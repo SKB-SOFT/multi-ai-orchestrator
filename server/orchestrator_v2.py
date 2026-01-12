@@ -1,8 +1,3 @@
-"""
-Multi-Provider Orchestrator v2
-Queries multiple LLM providers in parallel and synthesizes results.
-"""
-
 import hashlib
 import time
 import asyncio
@@ -26,7 +21,7 @@ PROVIDER_CONFIGS = {
     "groq": {
         "class": GroqProvider,
         "api_key_env": "GROQ_API_KEY",
-        "default_model": "mixtral-8x7b-32768",
+        "default_model": "llama-3.3-70b-versatile",
         "name": "Groq",
         "tier": "free",
         "quota": "14.4K req/day",
@@ -34,7 +29,7 @@ PROVIDER_CONFIGS = {
     "gemini": {
         "class": GeminiProvider,
         "api_key_env": "GEMINI_API_KEY",
-        "default_model": "gemini-2.0-flash",
+        "default_model": "gemini-pro",
         "name": "Google Gemini",
         "tier": "free",
         "quota": "60 req/min, 15K tokens/day",
@@ -79,10 +74,17 @@ for provider_id, config in PROVIDER_CONFIGS.items():
     api_key = os.getenv(config["api_key_env"])
     if api_key:
         try:
-            PROVIDERS[provider_id] = config["class"](
-                api_key=api_key,
-                model_name=config["default_model"]
-            )
+            # HuggingFace uses model_id instead of model_name
+            if provider_id == "huggingface":
+                PROVIDERS[provider_id] = config["class"](
+                    api_key=api_key,
+                    model_id=config["default_model"]
+                )
+            else:
+                PROVIDERS[provider_id] = config["class"](
+                    api_key=api_key,
+                    model_name=config["default_model"]
+                )
         except Exception as e:
             print(f"Warning: Failed to initialize {provider_id}: {e}")
 

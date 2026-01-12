@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -10,7 +10,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from db import AsyncSessionLocal, User, Query, Response, Cache, init_db
-from orchestrator import orchestrate_query, MODELS
+from orchestrator_v2 import orchestrate_query, PROVIDER_CONFIGS
 from dotenv import load_dotenv
 import asyncio
 from contextlib import asynccontextmanager
@@ -34,7 +34,7 @@ app = FastAPI(
 )
 
 # Setup
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this")
@@ -85,10 +85,17 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 async def get_current_user(
-    credentials: HTTPBearer = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
 ):
     """Validate JWT and return current user"""
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     try:
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -188,11 +195,12 @@ async def submit_query(
     
     # Check daily quota
     today = datetime.now(timezone.utc).date()
+    today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+    
     result = await db.execute(
         select(func.count(Query.query_id)).where(
             (Query.user_id == current_user.user_id) &
-            (func.cast(Query.query_timestamp, type_=type(datetime.now())))
-            >= datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+            (Query.query_timestamp >= today_start)
         )
     )
     today_count = result.scalar() or 0
@@ -202,7 +210,7 @@ async def submit_query(
     
     # Validate agents
     for agent_id in query_data.selected_agents:
-        if agent_id not in MODELS:
+        if agent_id not in PROVIDER_CONFIGS:
             raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
     
     # Create query record
@@ -221,13 +229,13 @@ async def submit_query(
         db
     )
     
-    # Store responses
-    for response_data in orch_result["responses"]:
+    # Store responses - orchestrator_v2 returns dict keyed by provider_id
+    for provider_id, response_data in orch_result["responses"].items():
         db_response = Response(
             query_id=new_query.query_id,
-            agent_id=response_data["agent_id"],
+            agent_id=provider_id,
             response_text=response_data.get("response_text", ""),
-            response_time_ms=response_data["response_time_ms"],
+            response_time_ms=response_data.get("response_time_ms", 0),
             token_count=response_data.get("token_count", 0),
             status=response_data["status"],
             error_message=response_data.get("error_message"),
@@ -237,15 +245,23 @@ async def submit_query(
     await db.commit()
     await db.refresh(new_query)
     
+    # Transform responses dict to list format for frontend
+    responses_list = [
+        {
+            "agent_id": provider_id,
+            "agent_name": PROVIDER_CONFIGS.get(provider_id, {}).get("name", provider_id),
+            **response_data
+        }
+        for provider_id, response_data in orch_result["responses"].items()
+    ]
+    
     return {
         "query_id": new_query.query_id,
         "query_text": new_query.query_text,
         "timestamp": new_query.query_timestamp.isoformat(),
-        "responses": orch_result["responses"],
+        "responses": responses_list,
         "metadata": {
-            "total_agents": orch_result["total_agents"],
-            "avg_response_time_ms": orch_result["avg_response_time_ms"],
-            "cached_count": orch_result["cached_count"],
+            **orch_result.get("metadata", {}),
             "queries_remaining": max(0, current_user.quota_daily - today_count - 1),
         }
     }
@@ -313,7 +329,7 @@ async def get_query_details(
             {
                 "response_id": r.response_id,
                 "agent_id": r.agent_id,
-                "agent_name": MODELS.get(r.agent_id, {}).get("name", r.agent_id),
+                "agent_name": PROVIDER_CONFIGS.get(r.agent_id, {}).get("name", r.agent_id),
                 "response_text": r.response_text,
                 "response_time_ms": r.response_time_ms,
                 "token_count": r.token_count,
@@ -385,7 +401,7 @@ async def get_metrics(
         "total_users": total_users,
         "total_queries": total_queries,
         "avg_response_time_ms": float(avg_response_time or 0),
-        "models": MODELS,
+        "models": PROVIDER_CONFIGS,
     }
 
 # ==================== HEALTH CHECK ====================
@@ -406,7 +422,7 @@ async def root():
         "name": "Multi-AI Orchestrator API",
         "version": "1.0.0",
         "docs": "/docs",
-        "models": list(MODELS.keys())
+        "models": list(PROVIDER_CONFIGS.keys())
     }
 
 # ==================== RUN SERVER ====================

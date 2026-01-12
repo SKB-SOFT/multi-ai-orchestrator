@@ -14,11 +14,11 @@ class GeminiProvider(BaseProvider):
     Docs: https://ai.google.dev/gemini-api/docs
     """
     
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-pro"):
         super().__init__(api_key, model_name)
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
     
-    async def query(self, prompt: str, timeout: int = 30, web_search: bool = True) -> Dict[str, Any]:
+    async def query(self, prompt: str, timeout: int = 30, web_search: bool = False) -> Dict[str, Any]:
         """
         Query Google Gemini API.
         """
@@ -27,13 +27,9 @@ class GeminiProvider(BaseProvider):
         payload = {
             "contents": [
                 {
-                    "role": "user",
                     "parts": [{"text": prompt}]
                 }
             ],
-            "systemInstruction": {
-                "parts": [{"text": "You are a helpful assistant. Provide concise, accurate responses with citations when available."}]
-            },
             "generationConfig": {
                 "maxOutputTokens": 1024,
                 "temperature": 0.7,

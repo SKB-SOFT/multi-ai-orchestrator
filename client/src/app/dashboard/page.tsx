@@ -25,6 +25,7 @@ import {
   Tooltip,
   Popover,
 } from '@mui/material';
+import { queryAPI } from '@/lib/api';
 import AddIcon from '@mui/icons-material/Add';
 import SendIcon from '@mui/icons-material/Send';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -54,12 +55,16 @@ type Msg = {
 };
 
 const MODELS = [
-  { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', icon: '🤖' },
-  { id: 'claude-3', name: 'Claude 3', provider: 'Anthropic', icon: '🧠' },
-  { id: 'perplexity', name: 'Perplexity', provider: 'Perplexity AI', icon: '🔍' },
+  { id: 'groq', name: 'Groq (Mixtral)', provider: 'Groq', icon: '⚡' },
+  { id: 'gemini', name: 'Gemini 2.0', provider: 'Google', icon: '🔮' },
+  { id: 'mistral', name: 'Mistral Large', provider: 'Mistral AI', icon: '🌪️' },
+  { id: 'cerebras', name: 'Cerebras (LLaMA)', provider: 'Cerebras', icon: '🧠' },
+  { id: 'cohere', name: 'Command R+', provider: 'Cohere', icon: '💫' },
+  { id: 'huggingface', name: 'Zephyr 7B', provider: 'HuggingFace', icon: '🤗' },
 ];
 
 export default function DashboardPerplexity() {
+  const [mounted, setMounted] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [history] = useState<string[]>([
     'Summarize latest AI trends 2025',
@@ -76,7 +81,7 @@ export default function DashboardPerplexity() {
   ]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModels, setSelectedModels] = useState<string[]>(['gpt-4', 'claude-3']);
+  const [selectedModels, setSelectedModels] = useState<string[]>(['groq', 'gemini']);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [focusMode, setFocusMode] = useState<'research' | 'writing' | 'default'>('default');
   const [modelHover, setModelHover] = useState<{ anchor: HTMLElement | null; id: string | null }>({
@@ -86,6 +91,11 @@ export default function DashboardPerplexity() {
   const [focusHoverAnchor, setFocusHoverAnchor] = useState<HTMLElement | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   useEffect(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages.length]);
 
   const theme = useMemo(
@@ -112,26 +122,63 @@ export default function DashboardPerplexity() {
     setPrompt('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const mockResources = {
-        query_time: Math.random() * 2 + 0.5,
-        tokens: Math.floor(Math.random() * 500 + 100),
-        model: selectedModels[0] || 'gpt-4',
-      };
+    try {
+      const response = await queryAPI.submit(text, selectedModels);
+      const data = response.data;
+
+      // Format responses from all models
+      let content = `Queried ${selectedModels.length} model(s) in ${focusMode} mode:\n\n`;
+      
+      if (data.responses && data.responses.length > 0) {
+        data.responses.forEach((res: any, idx: number) => {
+          const status = res.status === 'success' ? '✅' : '❌';
+          content += `\n### ${status} ${res.agent_name} (${res.response_time_ms.toFixed(0)}ms)\n`;
+          if (res.status === 'success') {
+            content += `${res.response_text}\n`;
+          } else {
+            content += `Error: ${res.error_message}\n`;
+          }
+        });
+      }
+
+      const resources = data.responses?.map((res: any) => ({
+        query_time: res.response_time_ms / 1000,
+        tokens: res.token_count || 0,
+        model: res.agent_name,
+      })) || [];
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `Searching across ${selectedModels.length} model(s) in ${focusMode} mode...\n\nKey findings:\n• Result 1: Generated from ${mockResources.model}\n• Result 2: Cross-referenced with sources\n• Result 3: Verified across models`,
+          content,
           model: selectedModels[0],
-          resources: [mockResources],
+          resources,
           timestamp: Date.now(),
         },
       ]);
+    } catch (error: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `❌ Error: ${error.response?.data?.detail || error.message || 'Failed to query models'}`,
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
   };
+
+  // Prevent hydration errors by only rendering after mount
+  if (!mounted) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', bgcolor: '#070B14' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>

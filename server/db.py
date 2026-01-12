@@ -10,7 +10,7 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./app.db")
 
 # Use aiosqlite for async SQLite support
-if "sqlite" in DATABASE_URL:
+if "sqlite" in DATABASE_URL and "aiosqlite" not in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite:///")
 
 engine = create_async_engine(

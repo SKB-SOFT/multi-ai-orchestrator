@@ -21,20 +21,20 @@ apiClient.interceptors.request.use((config) => {
 // Query endpoints
 export const queryAPI = {
   submit: (queryText: string, selectedAgents: string[]) =>
-    apiClient.post('/query', { query_text: queryText, selected_agents: selectedAgents }),
+    apiClient.post('/api/query', { query_text: queryText, selected_agents: selectedAgents }),
   
   getHistory: (limit = 20, offset = 0) =>
-    apiClient.get('/queries', { params: { limit, offset } }),
+    apiClient.get('/api/queries', { params: { limit, offset } }),
   
   getDetails: (queryId: number) =>
-    apiClient.get(`/query/${queryId}`),
+    apiClient.get(`/api/query/${queryId}`),
 }
 
 // Admin endpoints
 export const adminAPI = {
   getUsers: (limit = 10, offset = 0) =>
-    apiClient.get('/admin/users', { params: { limit, offset } }),
+    apiClient.get('/api/admin/users', { params: { limit, offset } }),
   
   getMetrics: () =>
-    apiClient.get('/admin/metrics'),
+    apiClient.get('/api/admin/metrics'),
 }
