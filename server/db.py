@@ -68,10 +68,11 @@ class Cache(Base):
     __tablename__ = "cache"
 
     __table_args__ = (
-        UniqueConstraint("query_hash", "agent_id", name="uq_cache_queryhash_agent"),
+        UniqueConstraint("query_hash", "agent_id", "user_id", name="uq_cache_user_query_agent"),
     )
     
     cache_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, index=True)
     query_hash = Column(String, nullable=False, index=True)
     agent_id = Column(String, nullable=False, index=True)
     response_text = Column(Text)

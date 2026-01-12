@@ -193,11 +193,9 @@ for provider_id, config in PROVIDER_CONFIGS.items():
 
 # ==================== UTILITY FUNCTIONS ====================
 
-def generate_query_hash(query_text: str, agent_ids: List[str]) -> str:
-    """
-    Generate SHA-256 hash of query + agents for caching.
-    """
-    content = f"{query_text}:{'|'.join(sorted(agent_ids))}"
+def generate_query_hash(user_id: int, query_text: str, agent_ids: List[str]) -> str:
+    """User-scoped hash prevents cross-user cache pollution."""
+    content = f"{user_id}:{query_text}:{'|'.join(sorted(agent_ids))}"
     return hashlib.sha256(content.encode()).hexdigest()
 
 class ResponseSynthesizer:
@@ -268,6 +266,7 @@ class ResponseSynthesizer:
 # ==================== MAIN ORCHESTRATION ====================
 
 async def orchestrate_query(
+    user_id: int,
     query_text: str,
     provider_ids: List[str],
     db=None,
@@ -295,7 +294,7 @@ async def orchestrate_query(
         }
     """
     
-    query_hash = generate_query_hash(query_text, provider_ids)
+    query_hash = generate_query_hash(user_id, query_text, provider_ids)
     requested_providers = list(provider_ids)
     cached_responses: Dict[str, Dict[str, Any]] = {}
     uncached_providers: List[str] = []
@@ -312,7 +311,9 @@ async def orchestrate_query(
             try:
                 result = await db.execute(
                     select(Cache).where(
-                        (Cache.query_hash == query_hash) & (Cache.agent_id == provider_id)
+                        (Cache.query_hash == query_hash) &
+                        (Cache.agent_id == provider_id) &
+                        (Cache.user_id == user_id)
                     )
                 )
                 cached = result.scalar_one_or_none()
@@ -381,7 +382,7 @@ async def orchestrate_query(
                         from .db import Cache  # type: ignore
                     except ImportError:
                         from db import Cache  # type: ignore
-                    db.add(Cache(query_hash=query_hash, agent_id=provider_id, response_text=result["response_text"]))
+                    db.add(Cache(user_id=user_id, query_hash=query_hash, agent_id=provider_id, response_text=result["response_text"]))
                 except Exception as e:
                     print(f"Warning: Failed to cache {provider_id}: {e}")
 

@@ -294,6 +294,7 @@ async def submit_query(
     
     # Orchestrate AI calls
     orch_result = await orchestrate_query(
+        user.user_id,
         query_data.query_text,
         query_data.selected_agents,
         db
