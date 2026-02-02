@@ -1,7 +1,12 @@
+
+
 'use client';
 
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+
 import { useRouter } from 'next/navigation';
+
+import DashboardComponent from '@/views/dashboard/Dashboard';
 import {
   AppBar,
   Avatar,

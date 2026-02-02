@@ -20,6 +20,7 @@ try:
         get_provider_info,
         validate_all_providers,  # ✅ added
     )
+    from .routes.dashboard import router as dashboard_router  # type: ignore
 except ImportError:
     # When running from project root or as server.db
     from server.db import AsyncSessionLocal, User, Query, Response, Cache, init_db  # type: ignore
@@ -29,6 +30,7 @@ except ImportError:
         get_provider_info,
         validate_all_providers,  # ✅ added
     )
+    from server.routes.dashboard import router as dashboard_router  # type: ignore
 
 from dotenv import load_dotenv
 import asyncio
@@ -69,6 +71,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include dashboard routes
+app.include_router(dashboard_router)
 
 # ==================== PYDANTIC MODELS ====================
 
