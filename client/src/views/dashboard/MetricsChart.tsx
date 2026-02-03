@@ -39,7 +39,7 @@ const MetricsChart: React.FC = () => {
   return (
     <Box bg={bg} p={6} borderRadius="lg" boxShadow="sm">
       <Flex justify="space-between" align="center" mb={6}>
-        <Heading size="md" color="black">Performance Metrics</Heading>
+        <Heading size="lg" color="#0a192f" fontWeight="800" fontFamily="Inter, Space Grotesk, ui-sans-serif">Performance Metrics</Heading>
         <ButtonGroup size="sm" isAttached variant="outline">
           <Button
             colorScheme={timeRange === '1h' ? 'blue' : 'gray'}

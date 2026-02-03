@@ -2,7 +2,8 @@ import axios from 'axios'
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.trim() ||
-  'http://127.0.0.1:8001' // dev fallback (match your run_dev.ps1 default)
+  process.env.REACT_APP_API_URL?.trim() ||
+  '';
 
 export const apiClient = axios.create({
   baseURL: API_URL,

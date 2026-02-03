@@ -35,11 +35,15 @@ export class DashboardWebSocket {
 
       this.ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data)
-          onMessage(data)
-          this.messageHandlers.forEach(handler => handler(data))
+          let data: any = event.data;
+          // Only parse if it looks like JSON
+          if (typeof data === 'string' && (data.startsWith('{') || data.startsWith('['))) {
+            data = JSON.parse(data);
+          }
+          onMessage(data);
+          this.messageHandlers.forEach(handler => handler(data));
         } catch (error) {
-          console.error('[WebSocket] Failed to parse message:', error)
+          console.error('[WebSocket] Failed to parse message:', error);
         }
       }
 

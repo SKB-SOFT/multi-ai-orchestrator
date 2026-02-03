@@ -1,7 +1,10 @@
 import requests
 import sys
 
-API_URL = "http://localhost:8000/api/query"  # Adjust if your server runs elsewhere
+import os
+from dotenv import load_dotenv
+load_dotenv()
+API_URL = os.getenv("API_URL", "http://localhost:8000/api/query")  # Set in .env
 
 
 def test_query(user_id=1, query_text="Explain quantum entanglement in simple terms. Also, compare it to classical physics and give a real-world analogy.", provider_ids=None):

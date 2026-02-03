@@ -88,8 +88,8 @@ const ErrorLog: React.FC<Props> = ({ errors, loading }) => {
   return (
     <Box bg={bg} p={6} borderRadius="lg" boxShadow="sm" h="100%">
       <Flex justify="space-between" align="center" mb={4}>
-        <Heading size="md" color="black">Recent Errors</Heading>
-        <Badge colorScheme="red" fontSize="sm">
+        <Heading size="lg" color="#0a192f" fontWeight="800" fontFamily="Inter, Space Grotesk, ui-sans-serif">Recent Errors</Heading>
+        <Badge colorScheme="red" fontSize="md" px={3} py={1} borderRadius="md" bg="#ef4444" color="#fff" fontWeight="700" fontFamily="Inter, Space Grotesk, ui-sans-serif">
           {errors.length} Errors
         </Badge>
       </Flex>

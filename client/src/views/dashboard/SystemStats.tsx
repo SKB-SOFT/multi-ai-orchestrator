@@ -61,21 +61,21 @@ const StatCard: React.FC<StatCardProps> = ({
     <Box bg={bg} p={6} borderRadius="lg" boxShadow="sm" transition="all 0.3s" _hover={{ boxShadow: 'md' }}>
       <Flex justify="space-between" align="start">
         <Stat>
-          <StatLabel fontSize="sm" fontWeight="medium" color="black">
+          <StatLabel fontSize="sm" fontWeight="bold" color="#16213a" letterSpacing={0.2} fontFamily="Inter, Space Grotesk, ui-sans-serif">
             {title}
           </StatLabel>
-          <StatNumber fontSize="2xl" fontWeight="bold" mt={2} color="black">
+          <StatNumber fontSize="2xl" fontWeight="extrabold" mt={2} color="#0a192f" fontFamily="Inter, Space Grotesk, ui-sans-serif">
             {stat}
           </StatNumber>
           {(change !== undefined || helpText) && (
-            <StatHelpText mb={0} fontSize="xs" color="black">
+            <StatHelpText mb={0} fontSize="xs" color="#3b82f6" fontWeight="500" fontFamily="Inter, Space Grotesk, ui-sans-serif">
               {change !== undefined && (
                 <>
                   <StatArrow type={change >= 0 ? 'increase' : 'decrease'} />
-                  <span style={{ color: 'black' }}>{Math.abs(change).toFixed(1)}%</span>
+                  <span style={{ color: '#3b82f6', fontWeight: 600 }}>{Math.abs(change).toFixed(1)}%</span>
                 </>
               )}
-              {helpText && <span style={{ color: 'black' }}>{` ${helpText}`}</span>}
+              {helpText && <span style={{ color: '#b6c2e2', fontWeight: 500 }}>{` ${helpText}`}</span>}
             </StatHelpText>
           )}
         </Stat>

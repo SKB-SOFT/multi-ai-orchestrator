@@ -76,8 +76,8 @@ const AgentStatus: React.FC<Props> = ({ agents, loading }) => {
   return (
     <Box bg={bg} p={6} borderRadius="lg" boxShadow="sm">
       <Flex justify="space-between" align="center" mb={4}>
-        <Heading size="md" color="black">Agent Status</Heading>
-        <Badge colorScheme="blue" fontSize="sm">
+        <Heading size="lg" color="#0a192f" fontWeight="800" fontFamily="Inter, Space Grotesk, ui-sans-serif">Agent Status</Heading>
+        <Badge colorScheme="blue" fontSize="md" px={3} py={1} borderRadius="md" bg="#3b82f6" color="#fff" fontWeight="700" fontFamily="Inter, Space Grotesk, ui-sans-serif">
           {agents.length} Active
         </Badge>
       </Flex>

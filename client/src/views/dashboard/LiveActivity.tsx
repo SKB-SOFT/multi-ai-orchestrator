@@ -49,7 +49,7 @@ const LiveActivity: React.FC<Props> = ({ activities }) => {
   return (
     <Box bg={bg} p={6} borderRadius="lg" boxShadow="sm" h="100%">
       <Flex justify="space-between" align="center" mb={4}>
-        <Heading size="md" color="black">Live Activity</Heading>
+        <Heading size="lg" color="#0a192f" fontWeight="800" fontFamily="Inter, Space Grotesk, ui-sans-serif">Live Activity</Heading>
         <Badge colorScheme="green" fontSize="sm">
           <Flex align="center" gap={1}>
             <Box w={2} h={2} bg="green.500" borderRadius="full" animation="pulse 2s infinite" />

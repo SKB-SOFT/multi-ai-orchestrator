@@ -73,12 +73,12 @@ type ProviderInfo = {
 };
 
 const MODELS = [
-  { id: 'groq', name: 'Groq (Mixtral)', provider: 'Groq', icon: '⚡' },
-  { id: 'gemini', name: 'Gemini 2.0', provider: 'Google', icon: '🔮' },
-  { id: 'mistral', name: 'Mistral Large', provider: 'Mistral AI', icon: '🌪️' },
-  { id: 'cerebras', name: 'Cerebras (LLaMA)', provider: 'Cerebras', icon: '🧠' },
-  { id: 'cohere', name: 'Command R+', provider: 'Cohere', icon: '💫' },
-  { id: 'huggingface', name: 'Zephyr 7B', provider: 'HuggingFace', icon: '🤗' },
+  { id: 'groq', name: 'Groq (Mixtral)', provider: 'Groq', icon: '' },
+  { id: 'gemini', name: 'Gemini 2.0', provider: 'Google', icon: '' },
+  { id: 'mistral', name: 'Mistral Large', provider: 'Mistral AI', icon: '' },
+  { id: 'cerebras', name: 'Cerebras (LLaMA)', provider: 'Cerebras', icon: '' },
+  { id: 'cohere', name: 'Command R+', provider: 'Cohere', icon: '' },
+  { id: 'huggingface', name: 'Zephyr 7B', provider: 'HuggingFace', icon: '' },
 ];
 
 export default function DashboardPerplexity() {
@@ -250,50 +250,31 @@ export default function DashboardPerplexity() {
             '& .MuiDrawer-paper': {
               width: drawerWidth,
               boxSizing: 'border-box',
-              borderRight: '1px solid rgba(255,255,255,0.08)',
-              bgcolor: '#0B1220',
+              borderRight: '1.5px solid #16213a',
+              background: '#0a192f',
+              boxShadow: '2px 0 16px 0 rgba(10,25,47,0.12)',
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'stretch',
+              alignItems: 'center',
+              borderRadius: 0,
+              paddingTop: 2,
             },
           }}
         >
-          <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AutoAwesomeIcon sx={{ color: '#00E5FF', fontSize: 24 }} />
-          </Box>
-          <Divider />
-          <Stack sx={{ px: 0.5, py: 1, alignItems: 'center' }} spacing={1.5}>
-            <Tooltip title="New" placement="right">
-              <IconButton size="small" onClick={() => setMessages([{ role: 'assistant', content: 'New chat started.' }])}>
-                <AddIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Library" placement="right">
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <IconButton size="small"><LibraryBooksIcon /></IconButton>
-                <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary' }}>Library</Typography>
-              </Box>
-            </Tooltip>
-            <Tooltip title="More" placement="right">
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <IconButton size="small"><MoreHorizIcon /></IconButton>
-                <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary' }}>More</Typography>
-              </Box>
-            </Tooltip>
-          </Stack>
+          <IconButton size="medium" onClick={() => setMessages([{ role: 'assistant', content: 'New chat started.' }])}
+            sx={{ color: '#fff', background: 'rgba(59,130,246,0.12)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}>
+            <AddIcon />
+          </IconButton>
+          <Divider sx={{ width: '80%', mb: 2 }} />
+          <IconButton size="medium" sx={{ color: '#fff', background: 'rgba(59,130,246,0.08)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}><LibraryBooksIcon /></IconButton>
+          <IconButton size="medium" sx={{ color: '#fff', background: 'rgba(59,130,246,0.08)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}><MoreHorizIcon /></IconButton>
           <Box sx={{ flex: 1 }} />
-          <Stack sx={{ px: 0.5, pb: 1.5, alignItems: 'center' }} spacing={1.5}>
-            <Tooltip title="Notifications" placement="right">
-              <IconButton size="small"><NotificationsNoneIcon /></IconButton>
-            </Tooltip>
-            <Tooltip title="Account" placement="right">
-              <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
-                <Avatar sx={{ width: 24, height: 24, bgcolor: '#00E5FF' }}>
-                  {(user?.full_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-          </Stack>
+          <IconButton size="medium" sx={{ color: '#fff', background: 'rgba(59,130,246,0.08)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}><NotificationsNoneIcon /></IconButton>
+          <IconButton size="medium" onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0, mb: 2 }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: '#3b82f6', color: '#fff', fontWeight: 700, fontSize: 18, border: '2px solid #fff' }}>
+              {(user?.full_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+            </Avatar>
+          </IconButton>
           <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
             <MenuItem>
               <AccountCircleIcon sx={{ mr: 1 }} /> Profile
@@ -315,73 +296,91 @@ export default function DashboardPerplexity() {
         </Drawer>
 
         {/* Main Content */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'linear-gradient(120deg, #0a192f 0%, #1a2236 100%)', minHeight: '100vh' }}>
           {/* Top Bar */}
           <AppBar
             position="sticky"
             elevation={0}
             sx={{
-              bgcolor: 'rgba(7,11,20,0.7)',
-              backdropFilter: 'blur(12px)',
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              bgcolor: 'rgba(10,25,47,0.92)',
+              backdropFilter: 'blur(16px)',
+              borderBottom: '1.5px solid #16213a',
+              boxShadow: '0 2px 16px 0 #0a192f22',
             }}
           >
-            <Toolbar>
-              <LightbulbIcon sx={{ mr: 1, color: '#00E5FF' }} />
-              <Typography fontWeight={700}>Research Assistant</Typography>
+            <Toolbar sx={{ minHeight: 72 }}>
+              <LightbulbIcon sx={{ mr: 1.5, color: '#3b82f6', fontSize: 30 }} />
+              <Typography fontWeight={800} fontSize={28} sx={{ color: '#fff', letterSpacing: 0.5, fontFamily: 'Inter, Space Grotesk, ui-sans-serif' }}>
+                Research Assistant
+              </Typography>
               <Box sx={{ flex: 1 }} />
               <Chip
                 label={`${selectedModels.length} model${selectedModels.length > 1 ? 's' : ''}`}
-                size="small"
+                size="medium"
                 variant="outlined"
-                sx={{ mr: 1 }}
+                sx={{ mr: 1, fontWeight: 600, color: '#3b82f6', borderColor: '#3b82f6', background: 'rgba(59,130,246,0.08)' }}
               />
               <Chip
                 label={`${focusMode} mode`}
-                size="small"
-                icon={<SearchIcon />}
+                size="medium"
+                icon={<SearchIcon sx={{ color: '#3b82f6' }} />}
                 variant="filled"
-                color="primary"
+                sx={{ fontWeight: 600, color: '#fff', background: '#3b82f6' }}
               />
             </Toolbar>
-            {isLoading && <LinearProgress sx={{ height: 2 }} />}
+            {isLoading && <LinearProgress sx={{ height: 2, background: '#16213a', '& .MuiLinearProgress-bar': { background: '#3b82f6' } }} />}
           </AppBar>
 
           {/* Messages */}
           <Box sx={{ flex: 1, px: { xs: 3, md: 4 }, py: 4, overflowY: 'auto' }}>
-            <Stack spacing={3} sx={{ maxWidth: 1120, mx: 'auto' }}>
+            <Stack spacing={3.5} sx={{ maxWidth: 1120, mx: 'auto' }}>
               {messages.map((m, idx) => (
                 <Box key={idx}>
                   <Stack
                     direction="row"
                     justifyContent={m.role === 'user' ? 'flex-end' : 'flex-start'}
-                    sx={{ mb: 0.75 }}
+                    sx={{ mb: 1.5 }}
                   >
                     {m.role === 'assistant' && (
-                      <Avatar sx={{ mr: 1.25, width: 36, height: 36, bgcolor: '#00E5FF' }}>
+                      <Avatar sx={{ mr: 1.5, width: 40, height: 40, bgcolor: '#3b82f6', color: '#fff', fontWeight: 700, fontSize: 20, boxShadow: '0 2px 12px 0 #3b82f655' }}>
                         {m.model?.charAt(0).toUpperCase() || 'A'}
                       </Avatar>
                     )}
                     <Paper
-                      variant="outlined"
+                      elevation={6}
                       sx={{
-                        px: 3,
-                        py: 2,
+                        px: 3.5,
+                        py: 2.5,
                         maxWidth: '80%',
-                        bgcolor: m.role === 'user' ? 'rgba(0, 229, 255, 0.08)' : 'rgba(255,255,255,0.03)',
-                        borderColor: m.role === 'user' ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.1)',
-                        borderRadius: 2.5,
+                        background: m.role === 'user'
+                          ? 'linear-gradient(120deg, rgba(59,130,246,0.10) 0%, rgba(10,25,47,0.95) 100%)'
+                          : 'linear-gradient(120deg, rgba(255,255,255,0.04) 0%, rgba(26,34,54,0.98) 100%)',
+                        border: '1.5px solid rgba(59,130,246,0.13)',
+                        borderRadius: 3.5,
+                        boxShadow: '0 4px 32px 0 #0a192f33',
+                        backdropFilter: 'blur(8px)',
+                        color: '#fff',
+                        transition: 'box-shadow 0.25s, transform 0.18s cubic-bezier(.4,2,.6,1)',
+                        cursor: 'pointer',
+                        '&:hover, &:focus': {
+                          boxShadow: '0 8px 40px 0 #3b82f655',
+                          transform: 'translateY(-2px) scale(1.012)',
+                        },
+                        '&:active': {
+                          boxShadow: '0 2px 12px 0 #3b82f655',
+                          transform: 'scale(0.99)',
+                        },
                       }}
                     >
-                      <Typography whiteSpace="pre-wrap" lineHeight={1.9} variant="body1">
+                      <Typography whiteSpace="pre-wrap" lineHeight={1.9} variant="body1" sx={{ color: '#fff', fontSize: 17 }}>
                         {m.content}
                       </Typography>
                       {m.resources && (
-                        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
                           {m.resources.map((r, i) => (
                             <Stack key={i} direction="row" spacing={1} sx={{ mt: 0.75 }} alignItems="center">
-                              <StorageIcon sx={{ fontSize: 14, color: '#00E5FF' }} />
-                              <Typography variant="caption" color="text.secondary">
+                              <StorageIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
+                              <Typography variant="caption" sx={{ color: '#b6c2e2' }}>
                                 {r.model} • {r.tokens} tokens • {r.query_time.toFixed(2)}s
                               </Typography>
                             </Stack>
@@ -390,20 +389,20 @@ export default function DashboardPerplexity() {
                       )}
                     </Paper>
                     {m.role === 'user' && (
-                      <Avatar sx={{ ml: 1.25, width: 36, height: 36, bgcolor: '#00E5FF' }}>R</Avatar>
+                      <Avatar sx={{ ml: 1.5, width: 40, height: 40, bgcolor: '#3b82f6', color: '#fff', fontWeight: 700, fontSize: 20, boxShadow: '0 2px 12px 0 #3b82f655' }}>R</Avatar>
                     )}
                   </Stack>
                   {m.role === 'assistant' && m.model && (
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 5 }}>
+                    <Typography variant="caption" sx={{ ml: 6, color: '#b6c2e2', fontWeight: 500, letterSpacing: 1 }}>
                       {m.model.toUpperCase()}
                     </Typography>
                   )}
                 </Box>
               ))}
               {isLoading && (
-                <Stack direction="row" spacing={1} alignItems="flex-end">
-                  <CircularProgress size={24} sx={{ color: '#00E5FF' }} />
-                  <Typography variant="body2" color="text.secondary">
+                <Stack direction="row" spacing={1.5} alignItems="flex-end">
+                  <CircularProgress size={26} sx={{ color: '#3b82f6' }} />
+                  <Typography variant="body2" sx={{ color: '#b6c2e2' }}>
                     Searching across models...
                   </Typography>
                 </Stack>
@@ -433,7 +432,7 @@ export default function DashboardPerplexity() {
                       onClick={() => setPrompt(suggest)}
                       sx={{ textTransform: 'none', borderRadius: 2, fontSize: 12 }}
                     >
-                      ✨ {suggest}
+                      {suggest}
                     </Button>
                   ))}
                 </Stack>
@@ -461,7 +460,7 @@ export default function DashboardPerplexity() {
                   return (
                     <Tooltip key={m.id} title={title} placement="top">
                       <Chip
-                        label={`${m.icon} ${m.name}`}
+                        label={m.name}
                         variant={selectedModels.includes(m.id) ? 'filled' : 'outlined'}
                         color={selectedModels.includes(m.id) ? 'primary' : 'default'}
                         disabled={!initialized}
@@ -491,12 +490,12 @@ export default function DashboardPerplexity() {
                 </Tooltip>
               </Stack>
 
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
                 <TextField
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   fullWidth
-                  placeholder="Ask me anything about AI, research, or code..."
+                  placeholder="Ask anything..."
                   multiline
                   maxRows={6}
                   onKeyDown={(e) => {
@@ -505,10 +504,24 @@ export default function DashboardPerplexity() {
                       handleSend();
                     }
                   }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2.5,
-                      bgcolor: 'rgba(0, 229, 255, 0.03)',
+                  InputProps={{
+                    sx: {
+                      borderRadius: 3.5,
+                      bgcolor: 'rgba(26,34,54,0.98)',
+                      color: '#fff',
+                      fontSize: 18,
+                      boxShadow: '0 2px 16px 0 #0a192f33',
+                      px: 2.5,
+                      py: 1.5,
+                      border: '1.5px solid #3b82f6',
+                      '&:hover': {
+                        borderColor: '#60a5fa',
+                        boxShadow: '0 4px 24px 0 #3b82f655',
+                      },
+                      '&.Mui-focused': {
+                        borderColor: '#2563eb',
+                        boxShadow: '0 4px 32px 0 #2563eb55',
+                      },
                     },
                   }}
                 />
@@ -516,18 +529,23 @@ export default function DashboardPerplexity() {
                   onClick={handleSend}
                   disabled={!prompt.trim() || isLoading}
                   sx={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 2.5,
-                    bgcolor: 'rgba(0, 229, 255, 0.14)',
-                    '&:hover': { bgcolor: 'rgba(0, 229, 255, 0.22)' },
-                    '&.Mui-disabled': { bgcolor: 'rgba(0, 229, 255, 0.05)' },
+                    width: 56,
+                    height: 56,
+                    borderRadius: 3.5,
+                    bgcolor: '#3b82f6',
+                    color: '#fff',
+                    boxShadow: '0 2px 12px 0 #3b82f655',
+                    fontSize: 28,
+                    transition: 'box-shadow 0.18s, background 0.18s, transform 0.18s',
+                    '&:hover, &:focus': { bgcolor: '#2563eb', color: '#fff', boxShadow: '0 4px 24px 0 #2563eb55', transform: 'scale(1.06)' },
+                    '&:active': { bgcolor: '#1e293b', color: '#fff', boxShadow: '0 2px 8px 0 #1e293b55', transform: 'scale(0.97)' },
+                    '&.Mui-disabled': { bgcolor: 'rgba(59,130,246,0.10)', color: '#b6c2e2' },
                   }}
                 >
-                  <SendIcon />
+                  <SendIcon fontSize="inherit" />
                 </IconButton>
               </Stack>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: '#b6c2e2', fontWeight: 500, fontSize: 14, letterSpacing: 0.2 }}>
                 Shift+Enter for new line • Select models above
               </Typography>
             </Stack>
