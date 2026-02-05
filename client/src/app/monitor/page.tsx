@@ -1,5 +1,5 @@
-import Dashboard from '@/views/dashboard/Dashboard'
+import DashboardApp from '@/dashboard/App'
 
 export default function MonitorPage() {
-  return <Dashboard />
+  return <DashboardApp />
 }
