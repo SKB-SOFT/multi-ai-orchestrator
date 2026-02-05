@@ -40,22 +40,20 @@ export function Navbar() {
               <ThemeToggle />
             </Box>
 
+            {/* Hide user login interface for open access */}
+            {/*
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Chip
-                  avatar={<Box sx={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#22d3ee,#2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12 }}>{user.full_name.slice(0,2).toUpperCase()}</Box>}
-                  label={<Box sx={{ lineHeight: 1 }}><Typography variant="body2" sx={{ fontWeight: 600 }}>{user.full_name}</Typography><Typography variant="caption" sx={{ color: 'text.secondary' }}>{user.email}</Typography></Box>}
-                  variant="outlined"
-                  sx={{ bgcolor: 'rgba(2,6,23,0.7)' }}
-                />
-                <Button variant="contained" color="primary" onClick={handleLogout} startIcon={<LogOut size={18} />}>Logout</Button>
+                <Chip ... />
+                <Button ...>Logout</Button>
               </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Link href="/login"><Button variant="contained" color="primary">Sign In</Button></Link>
-                <Link href="/register" className="hidden sm:block"><Button variant="outlined" color="inherit">Register</Button></Link>
+                <Link href="/login"><Button ...>Sign In</Button></Link>
+                <Link href="/register" className="hidden sm:block"><Button ...>Register</Button></Link>
               </Box>
             )}
+            */}
           </Toolbar>
         </AppBar>
         <CommandPalette />

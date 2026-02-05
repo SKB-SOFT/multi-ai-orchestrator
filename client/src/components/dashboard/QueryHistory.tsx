@@ -14,20 +14,33 @@ export function QueryHistory({ onSelect, selectedId, onClose }: {
   const [queries, setQueries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const CACHE_KEY = 'queryHistoryCache';
+  const CACHE_TIME_KEY = 'queryHistoryCacheTime';
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
-    fetchQueries()
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+    const now = Date.now();
+    if (cached && cachedTime && now - parseInt(cachedTime) < CACHE_TTL) {
+      setQueries(JSON.parse(cached));
+      setLoading(false);
+    } else {
+      fetchQueries();
+    }
   }, [])
 
   const fetchQueries = async () => {
     try {
-      setLoading(true)
-      const response = await queryAPI.getHistory(20, 0)
-      setQueries(response.data.queries)
+      setLoading(true);
+      const response = await queryAPI.getHistory(20, 0);
+      setQueries(response.data.queries);
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(response.data.queries));
+      sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
     } catch (error) {
-      console.error('Error fetching queries:', error)
+      console.error('Error fetching queries:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -37,7 +50,7 @@ export function QueryHistory({ onSelect, selectedId, onClose }: {
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      <Paper elevation={0} sx={{ bgcolor: 'rgba(1,4,14,0.95)', border: '1px solid rgba(30,41,59,0.8)', p: 3, borderRadius: 0, boxShadow: '0 18px 60px -50px rgba(0,0,0,0.8)', minHeight: '100vh', width: 340 }}>
+      <Paper elevation={0} sx={{ bgcolor: '#070B14', border: '1px solid rgba(30,41,59,0.8)', p: 3, borderRadius: 0, boxShadow: '0 18px 60px -50px rgba(0,0,0,0.8)', minHeight: '100vh', width: 340 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Typography variant="body1" sx={{ fontWeight: 600 }}>Query History</Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>Last 20</Typography>
@@ -53,7 +66,7 @@ export function QueryHistory({ onSelect, selectedId, onClose }: {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             fullWidth
-            sx={{ '& .MuiOutlinedInput-root': { pl: 3, bgcolor: 'rgba(2,6,23,0.8)' } }}
+            sx={{ '& .MuiOutlinedInput-root': { pl: 3, bgcolor: 'rgb(11,16,28)', color: '#fff' }, input: { color: '#fff' } }}
           />
         </Box>
 
@@ -70,7 +83,7 @@ export function QueryHistory({ onSelect, selectedId, onClose }: {
                 <Box
                   sx={{
                     p: 1.5,
-                    bgcolor: selectedId === query.query_id ? 'rgba(34,211,238,0.10)' : 'rgba(2,6,23,0.6)',
+                    bgcolor: selectedId === query.query_id ? 'rgba(34,211,238,0.10)' : 'rgb(11,16,28)',
                     border: selectedId === query.query_id ? '2px solid #3b82f6' : '1px solid rgba(30,41,59,0.8)',
                     borderRadius: 2,
                     ':hover': { borderColor: 'rgba(34,211,238,0.4)' },

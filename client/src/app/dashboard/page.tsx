@@ -243,73 +243,13 @@ export default function DashboardPerplexity() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
       <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#070B14' }}>
-        {/* Slim left icon rail */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            width: drawerWidth,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              borderRight: '1.5px solid #16213a',
-              background: '#0a192f',
-              boxShadow: '2px 0 16px 0 rgba(10,25,47,0.12)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderRadius: 0,
-              paddingTop: 2,
-            },
-          }}
-        >
-          <IconButton size="medium" onClick={() => setMessages([{ role: 'assistant', content: 'New chat started.' }])}
-            sx={{ color: '#fff', background: 'rgba(59,130,246,0.12)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}>
-            <AddIcon />
-          </IconButton>
-          <Divider sx={{ width: '80%', mb: 2 }} />
-          <IconButton
-            size="medium"
-            onClick={() => setShowHistory((v) => !v)}
-            sx={{
-              color: showHistory ? '#3b82f6' : '#fff',
-              background: showHistory ? 'rgba(59,130,246,0.18)' : 'rgba(59,130,246,0.08)',
-              mb: 2,
-              '&:hover': { background: '#3b82f6', color: '#fff' },
-              border: showHistory ? '2px solid #3b82f6' : undefined,
-            }}
-          >
-            <LibraryBooksIcon />
-          </IconButton>
-          <IconButton size="medium" sx={{ color: '#fff', background: 'rgba(59,130,246,0.08)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}><MoreHorizIcon /></IconButton>
-          <Box sx={{ flex: 1 }} />
-          <IconButton size="medium" sx={{ color: '#fff', background: 'rgba(59,130,246,0.08)', mb: 2, '&:hover': { background: '#3b82f6', color: '#fff' } }}><NotificationsNoneIcon /></IconButton>
-          <IconButton size="medium" onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0, mb: 2 }}>
-            <Avatar sx={{ width: 32, height: 32, bgcolor: '#3b82f6', color: '#fff', fontWeight: 700, fontSize: 18, border: '2px solid #fff' }}>
-              {(user?.full_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-            </Avatar>
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
-            <MenuItem>
-              <AccountCircleIcon sx={{ mr: 1 }} /> Profile
-            </MenuItem>
-            <MenuItem>
-              <SettingsIcon sx={{ mr: 1 }} /> Settings
-            </MenuItem>
-            <Divider />
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                logout();
-                router.push('/login');
-              }}
-            >
-              <LogoutIcon sx={{ mr: 1 }} /> Logout
-            </MenuItem>
-          </Menu>
+        {/* Sidebar commented out for open access */}
+        {/*
+        <Drawer ... >
+          ...sidebar content...
         </Drawer>
+        */}
 
         {/* QueryHistory Drawer */}
         {showHistory && (
@@ -356,9 +296,8 @@ export default function DashboardPerplexity() {
             }}
           >
             <Toolbar sx={{ minHeight: 72 }}>
-              <LightbulbIcon sx={{ mr: 1.5, color: '#3b82f6', fontSize: 30 }} />
               <Typography fontWeight={800} fontSize={28} sx={{ color: '#fff', letterSpacing: 0.5, fontFamily: 'Inter, Space Grotesk, ui-sans-serif' }}>
-                Research Assistant
+                MANY MINDS
               </Typography>
               <Box sx={{ flex: 1 }} />
               <Chip
@@ -399,9 +338,7 @@ export default function DashboardPerplexity() {
                         px: 3.5,
                         py: 2.5,
                         maxWidth: '80%',
-                        background: m.role === 'user'
-                          ? 'linear-gradient(120deg, rgba(59,130,246,0.10) 0%, rgba(10,25,47,0.95) 100%)'
-                          : 'linear-gradient(120deg, rgba(255,255,255,0.04) 0%, rgba(26,34,54,0.98) 100%)',
+                        background: 'rgb(11,16,28)',
                         border: '1.5px solid rgba(59,130,246,0.13)',
                         borderRadius: 3.5,
                         boxShadow: '0 4px 32px 0 #0a192f33',
