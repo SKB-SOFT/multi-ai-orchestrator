@@ -5,13 +5,14 @@ from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
+import time
 import os
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 
-from server.db import AsyncSessionLocal, User, Query, Response, Cache, init_db  # type: ignore
+from server.db import AsyncSessionLocal, User, Query, Response, Cache, JudgeDecision, init_db  # type: ignore
 from server.orchestrator_v2 import (
     orchestrate_query,
     PROVIDER_CONFIGS,
@@ -19,10 +20,13 @@ from server.orchestrator_v2 import (
     validate_all_providers,  # ✅ added
 )
 from server.routes.dashboard import router as dashboard_router  # type: ignore
+from server.routes.research_reports import router as research_router  # type: ignore
+from server.services.research_logging import compute_embedding, estimate_cost_usd, get_query_metrics, log_system_metrics
 
 from dotenv import load_dotenv
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+from server.services.report_monitor import get_monitor
 
 _ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(_ENV_PATH)
@@ -32,8 +36,30 @@ load_dotenv(_ENV_PATH)
 async def lifespan(app: FastAPI):
     # Startup
     await init_db()
+    
+    # Initialize report monitor
+    try:
+        monitor = get_monitor()
+        monitor.start()
+    except Exception as e:
+        print(f"Warning: Could not start report monitor: {e}")
+    
+    metrics_task = asyncio.create_task(_metrics_loop())
     yield
-    # Shutdown (if needed)
+    metrics_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await metrics_task
+
+
+async def _metrics_loop():
+    interval = int(os.getenv("METRICS_INTERVAL_SECONDS", "3600"))
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                await log_system_metrics(session)
+        except Exception:
+            pass
+        await asyncio.sleep(interval)
 
 # FastAPI app
 app = FastAPI(
@@ -54,7 +80,8 @@ JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", 24))
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app", "*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,6 +89,9 @@ app.add_middleware(
 
 # Include dashboard routes
 app.include_router(dashboard_router)
+
+# Include research reports routes
+app.include_router(research_router)
 
 # ==================== PYDANTIC MODELS ====================
 
@@ -276,6 +306,7 @@ async def submit_query(
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
+    start_time = time.time()
     user = current_user
     if user is None:
         user = await get_or_create_guest_user(db)
@@ -303,10 +334,23 @@ async def submit_query(
         if agent_id not in PROVIDER_CONFIGS:
             raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
 
+    query_metrics = get_query_metrics(query_data.query_text)
     new_query = Query(
         user_id=user.user_id,
         query_text=query_data.query_text,
-        query_type="general"
+        query_type="general",
+        query_length=query_metrics["query_length"],
+        word_count=query_metrics["word_count"],
+        question_type=query_metrics["question_type"],
+        complexity_score=query_metrics["complexity_score"],
+        gatekeeper_score=query_metrics["complexity_score"],
+        domain=query_metrics["domain"],
+        accepted=True,
+        rejection_reason=None,
+        has_memory_context=False,
+        memory_context_count=0,
+        cold_start=True,
+        embedding=compute_embedding(query_data.query_text),
     )
     db.add(new_query)
     await db.flush()
@@ -318,17 +362,44 @@ async def submit_query(
         db
     )
 
+    responses_by_provider = {}
     for provider_id, response_data in orch_result["responses"].items():
+        token_count = response_data.get("token_count")
         db_response = Response(
             query_id=new_query.query_id,
             agent_id=provider_id,
+            model_version=response_data.get("model_used"),
             response_text=response_data.get("response_text", ""),
             response_time_ms=response_data.get("response_time_ms", 0),
-            token_count=response_data.get("token_count", 0),
+            token_count=token_count,
+            token_count_input=None,
+            token_count_output=token_count,
+            cost_usd=estimate_cost_usd(provider_id, token_count),
+            confidence_score=None,
+            cached=response_data.get("cached", False),
             status=response_data["status"],
             error_message=response_data.get("error_message"),
         )
         db.add(db_response)
+        responses_by_provider[provider_id] = db_response
+
+    await db.flush()
+
+    synth_provider_id = orch_result.get("metadata", {}).get("synth_provider_id")
+    winning_response = responses_by_provider.get(synth_provider_id) if synth_provider_id else None
+    db.add(JudgeDecision(
+        query_id=new_query.query_id,
+        winning_response_id=winning_response.response_id if winning_response else None,
+        winning_model=synth_provider_id,
+        judge_reasoning="synthesis",
+        accuracy_score=None,
+        coherence_score=None,
+        completeness_score=None,
+        total_score=None,
+        tie_breaker=None,
+    ))
+
+    new_query.processing_time_ms = (time.time() - start_time) * 1000.0
 
     await db.commit()
     await db.refresh(new_query)

@@ -323,13 +323,21 @@ def _build_synthesis_prompt(user_query: str, responses: Dict[str, Dict[str, Any]
     )
 
 
-async def _synthesize_final_answer(query_text: str, responses: Dict[str, Dict[str, Any]], timeout: int) -> str:
+async def _synthesize_final_answer(
+    query_text: str,
+    responses: Dict[str, Dict[str, Any]],
+    timeout: int
+) -> Dict[str, Any]:
     successful_ids = [
         pid for pid, r in responses.items()
         if r.get("status") == "success" and _safe_str(r.get("response_text"))
     ]
     if not successful_ids:
-        return "No provider succeeded. Try again."
+        return {
+            "final_answer": "No provider succeeded. Try again.",
+            "synth_provider_id": None,
+            "used_fallback": False,
+        }
 
     synth_provider_id = "groq" if ("groq" in successful_ids and "groq" in PROVIDERS) else successful_ids[0]
 
@@ -337,13 +345,25 @@ async def _synthesize_final_answer(query_text: str, responses: Dict[str, Dict[st
         prompt = _build_synthesis_prompt(query_text, responses)
         res = await PROVIDERS[synth_provider_id].query(prompt, timeout=min(SYNTH_TIMEOUT_S, timeout))
         if res.get("status") == "success" and _safe_str(res.get("response_text")):
-            return _safe_str(res["response_text"])
+            return {
+                "final_answer": _safe_str(res["response_text"]),
+                "synth_provider_id": synth_provider_id,
+                "used_fallback": False,
+            }
     except Exception:
         pass
 
     if "groq" in successful_ids:
-        return _safe_str(responses["groq"].get("response_text", ""))
-    return _safe_str(responses[successful_ids[0]].get("response_text", ""))
+        return {
+            "final_answer": _safe_str(responses["groq"].get("response_text", "")),
+            "synth_provider_id": "groq",
+            "used_fallback": True,
+        }
+    return {
+        "final_answer": _safe_str(responses[successful_ids[0]].get("response_text", "")),
+        "synth_provider_id": successful_ids[0],
+        "used_fallback": True,
+    }
 
 
 async def orchestrate_query(
@@ -470,7 +490,8 @@ async def orchestrate_query(
             r["error_message"] = _short_error(r["error_message"])
 
     synthesis = ResponseSynthesizer.aggregate_responses(all_responses)
-    final_answer = await _synthesize_final_answer(query_text, all_responses, timeout=timeout)
+    synth_result = await _synthesize_final_answer(query_text, all_responses, timeout=timeout)
+    final_answer = synth_result["final_answer"]
 
     successful = [r for r in all_responses.values() if r.get("status") == "success"]
     response_times = [r.get("response_time_ms", 0) for r in successful if not r.get("cached", False)]
@@ -492,6 +513,8 @@ async def orchestrate_query(
             "cached_count": len(cached_responses),
             "query_hash": query_hash,
             "synth_strategy": "prefer_groq",
+            "synth_provider_id": synth_result.get("synth_provider_id"),
+            "synth_used_fallback": synth_result.get("used_fallback"),
         }
     }
 
