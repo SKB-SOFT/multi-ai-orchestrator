@@ -7,6 +7,7 @@ import { Zap, LogOut, Command } from 'lucide-react'
 import Link from 'next/link'
 import { CommandPalette } from '@/components/CommandPalette'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { AppBar, Toolbar, Box, Typography, Chip, IconButton } from '@mui/material'
 
 export function Navbar() {
   const { user, logout } = useAuth()
