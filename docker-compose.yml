@@ -31,6 +31,7 @@ services:
       context: .
       dockerfile: server/Dockerfile
     command: streamlit run server/scripts/human_eval_ui.py --server.port 8501 --server.address 0.0.0.0
+    env_file: .env
     ports:
       - "8501:8501"
     volumes:

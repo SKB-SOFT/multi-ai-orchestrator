@@ -9,7 +9,6 @@ RUN useradd -m -u 1000 brain && chown brain:brain /app
 
 # Copy only the server folder to preserve absolute imports (server.app)
 COPY server/ /app/server/
-COPY .env /app/.env
 
 # Ensure data directory exists and is writable
 RUN mkdir -p /app/data && chown -R brain:brain /app
