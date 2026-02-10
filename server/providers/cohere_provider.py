@@ -1,26 +1,27 @@
 import asyncio
 import aiohttp
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import time
 from .base_provider import BaseProvider
 
 class CohereProvider(BaseProvider):
     """
     Cohere AI Provider - Text generation and understanding
-    Free tier: 1,000 requests/month with $1 trial credits
-    No credit card required
+    Free tier: 1,000 requests/month per key
+    Supports multiple API keys with automatic rotation
     
     Docs: https://docs.cohere.com/reference/generate
     """
     
-    def __init__(self, api_key: str, model_name: str = "command-r"):
-        super().__init__(api_key, model_name)
+    def __init__(self, api_key: str, model_name: str = "command-r", api_keys: Optional[List[str]] = None):
+        super().__init__(api_key, model_name, api_keys)
         self.base_url = "https://api.cohere.ai/v1/chat"
     
     async def query(self, prompt: str, timeout: int = 30) -> Dict[str, Any]:
         """
         Query Cohere API for text generation.
+        Uses round-robin key rotation for multiple API keys.
         """
         start_time = time.time()
         
@@ -33,7 +34,7 @@ class CohereProvider(BaseProvider):
         }
         
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self.get_next_key()}",
             "Content-Type": "application/json",
         }
         

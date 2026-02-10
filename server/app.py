@@ -258,7 +258,29 @@ async def get_me(current_user: User = Depends(get_current_user)):
             "full_name": current_user.full_name,
             "quota_daily": current_user.quota_daily,
             "is_admin": current_user.is_admin,
+            "consent_research": getattr(current_user, "consent_research", True),
+            "anonymize_data": getattr(current_user, "anonymize_data", False),
         }
+    }
+
+@app.post("/api/auth/optout")
+async def toggle_optout(
+    research: bool = True,
+    anonymize: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Ethics compliance: Anonymization + opt-out.
+    Enables users to control how their data is used for research.
+    """
+    current_user.consent_research = research
+    current_user.anonymize_data = anonymize
+    await db.commit()
+    return {
+        "status": "updated",
+        "consent_research": research,
+        "anonymize_data": anonymize
     }
 
 @app.get("/api/providers")
@@ -572,6 +594,96 @@ async def health():
         "version": "1.0.0",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+# ==================== EVALUATION ENDPOINTS ====================
+
+@app.post("/api/eval/benchmark")
+async def run_benchmark(
+    type: str = "mmlu",
+    limit: int = 10,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Run a benchmark subset (MMLU/GSM8K) to validate ensemble accuracy vs single providers.
+    Supports ground truth validation and brain_strength correlation tracking.
+    """
+    import json
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    sample_path = os.path.join(os.path.dirname(__file__), "data", f"{type}_sample.json")
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail=f"Benchmark {type} not found")
+    
+    with open(sample_path, "r") as f:
+        questions = json.load(f)
+    
+    questions = questions[:limit]
+    results = []
+    
+    for q in questions:
+        prompt = f"Question: {q['question']}\nOptions: {', '.join(q['options'])}\nProvide ONLY the letter of the correct answer."
+        
+        # Run through orchestrator
+        orch_result = await orchestrate_query(
+            current_user.user_id,
+            prompt,
+            ["groq", "gemini", "cerebras"], # Standard baseline
+            db
+        )
+        
+        final_answer = (orch_result.get("final_answer") or "").strip().upper()
+        # Simple extraction
+        is_correct = q['answer'] in final_answer[:10]
+        
+        results.append({
+            "question_id": q.get("id"),
+            "subject": q.get("subject"),
+            "correct": is_correct,
+            "predicted": final_answer[:10],
+            "actual": q['answer'],
+            "brain_strength": orch_result.get("metadata", {}).get("complexity_score", 0)
+        })
+    
+    accuracy = sum(1 for r in results if r["correct"]) / len(results) if results else 0
+    
+    return {
+        "benchmark": type,
+        "count": len(results),
+        "accuracy": accuracy,
+        "results": results
+    }
+
+@app.get("/api/admin/rejected-queries")
+async def get_rejected_queries(
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get rejected queries for human validation and gatekeeper tuning.
+    Validates 6% rejection isn't cherry-picking (ablation data).
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = await db.execute(
+        select(Query).where(Query.accepted == False).order_by(Query.query_timestamp.desc()).limit(limit)
+    )
+    rejected = result.scalars().all()
+    
+    return [
+        {
+            "query_id": q.query_id,
+            "query_text": q.query_text,
+            "rejection_reason": q.rejection_reason,
+            "gatekeeper_score": q.gatekeeper_score,
+            "complexity_score": q.complexity_score,
+            "timestamp": q.query_timestamp.isoformat()
+        }
+        for q in rejected
+    ]
 
 @app.get("/")
 async def root():

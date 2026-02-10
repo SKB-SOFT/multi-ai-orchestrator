@@ -1,6 +1,6 @@
 import asyncio
 import aiohttp
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import time
 from .base_provider import BaseProvider
 
@@ -12,7 +12,7 @@ def _classify_http(status: int) -> str:
     if status in (500, 502, 503, 504):
         return "provider_down"
     if status in (401, 403):
-        return "auth_error"
+        return "unauthorized"
     if status == 400:
         return "bad_request"
     if status == 404:
@@ -22,20 +22,21 @@ def _classify_http(status: int) -> str:
 
 
 class GeminiProvider(BaseProvider):
-    """Google Gemini API Provider with v1/v1beta fallback."""
+    """Google Gemini API Provider with v1/v1beta fallback.
+    Supports multiple API keys with automatic rotation."""
     MODEL_FALLBACKS = [
         "gemini-2.0-flash",
         "gemini-1.5-flash-latest",
         "gemini-1.5-pro",
     ]
 
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash"):
-        super().__init__(api_key, model_name)
+    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash", api_keys: Optional[List[str]] = None):
+        super().__init__(api_key, model_name, api_keys)
         self.base_v1 = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent"
         self.base_v1beta = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
 
     async def _post(self, session: aiohttp.ClientSession, url: str, payload: dict, timeout: int):
-        params = {"key": self.api_key}
+        params = {"key": self.get_next_key()}
         headers = {"Content-Type": "application/json"}
         return await session.post(
             url,

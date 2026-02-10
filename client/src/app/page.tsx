@@ -52,6 +52,7 @@ type Msg = {
   model?: string;
   timestamp?: number;
   resources?: { query_time: number; tokens: number; model: string }[];
+  all_responses?: any[];
 };
 
 type ProviderInfo = {
@@ -98,6 +99,7 @@ export default function DashboardPerplexity() {
   const [providers, setProviders] = useState<Record<string, ProviderInfo> | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [focusMode, setFocusMode] = useState<'research' | 'writing' | 'default'>('default');
+  const [sideBySide, setSideBySide] = useState(false);
   const [modelHover, setModelHover] = useState<{ anchor: HTMLElement | null; id: string | null }>({
     anchor: null,
     id: null,
@@ -179,19 +181,15 @@ export default function DashboardPerplexity() {
         ? data.final_answer.trim()
         : 'No answer returned.';
 
-      // Compact failure summary (optional)
-      if (Array.isArray(data.errors) && data.errors.length > 0) {
-        const lines = data.errors
-          .slice(0, 6)
-          .map((e: any) => `- ${e.agent_id}: ${e.error_type || 'error'} (${(e.error_message || '').toString().slice(0, 140)})`);
-        content += `\n\nSome providers failed:\n${lines.join('\n')}`;
-      }
+      const resources = data.responses
+        ?.filter((res: any) => res.status === 'success')
+        .map((res: any) => ({
+          query_time: res.response_time_ms / 1000,
+          tokens: res.token_count || 0,
+          model: res.agent_name,
+        })) || [];
 
-      const resources = data.responses?.map((res: any) => ({
-        query_time: res.response_time_ms / 1000,
-        tokens: res.token_count || 0,
-        model: res.agent_name,
-      })) || [];
+      const all_responses = data.responses?.filter((res: any) => res.status === 'success') || [];
 
       setMessages((prev) => [
         ...prev,
@@ -200,6 +198,7 @@ export default function DashboardPerplexity() {
           content,
           model: selectedModels[0],
           resources,
+          all_responses,
           timestamp: Date.now(),
         },
       ]);
@@ -256,6 +255,14 @@ export default function DashboardPerplexity() {
                 variant="outlined"
                 sx={{ mr: 1, fontWeight: 600, color: '#3b82f6', borderColor: '#3b82f6', background: 'rgba(59,130,246,0.08)' }}
               />
+              <Button
+                variant={sideBySide ? "contained" : "outlined"}
+                onClick={() => setSideBySide(!sideBySide)}
+                startIcon={<Groups2Icon />}
+                sx={{ mr: 1, borderRadius: 2 }}
+              >
+                Side-by-Side
+              </Button>
               <Chip
                 label={`${focusMode} mode`}
                 size="medium"
@@ -287,7 +294,8 @@ export default function DashboardPerplexity() {
                       sx={{
                         px: 3.5,
                         py: 2.5,
-                        maxWidth: '80%',
+                        maxWidth: sideBySide && m.role === 'assistant' && m.all_responses ? '100%' : '80%',
+                        width: sideBySide && m.role === 'assistant' && m.all_responses ? '100%' : 'auto',
                         background: 'rgb(11,16,28)',
                         border: '1.5px solid rgba(59,130,246,0.13)',
                         borderRadius: 3.5,
@@ -306,10 +314,61 @@ export default function DashboardPerplexity() {
                         },
                       }}
                     >
-                      <Typography whiteSpace="pre-wrap" lineHeight={1.9} variant="body1" sx={{ color: '#fff', fontSize: 17 }}>
-                        {m.content}
-                      </Typography>
-                      {m.resources && (
+                      {sideBySide && m.role === 'assistant' && m.all_responses ? (
+                        <Box>
+                          <Typography variant="h6" sx={{ color: '#00E5FF', mb: 2, fontWeight: 700 }}>
+                            Side-by-Side Comparison (Training Matrix)
+                          </Typography>
+                          <Box sx={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: { 
+                              xs: '1fr', 
+                              md: m.all_responses.length > 2 ? 'repeat(3, 1fr)' : `repeat(${m.all_responses.length}, 1fr)` 
+                            }, 
+                            gap: 2,
+                            overflowX: 'auto',
+                            pb: 2
+                          }}>
+                            {m.all_responses.map((resp: any, i: number) => (
+                              <Paper key={i} sx={{ 
+                                p: 2, 
+                                bgcolor: 'rgba(255,255,255,0.03)', 
+                                border: '1px solid rgba(59,130,246,0.2)',
+                                borderRadius: 2
+                              }}>
+                                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                                  <Chip label={resp.agent_name || resp.agent_id} size="small" color="primary" sx={{ fontWeight: 700 }} />
+                                  <Typography variant="caption" sx={{ color: '#b6c2e2' }}>
+                                    {resp.response_time_ms}ms
+                                  </Typography>
+                                </Stack>
+                                <Typography variant="body2" sx={{ 
+                                  color: '#fff', 
+                                  whiteSpace: 'pre-wrap',
+                                  fontSize: '0.875rem',
+                                  lineHeight: 1.6,
+                                  maxHeight: 400,
+                                  overflowY: 'auto'
+                                }}>
+                                  {resp.response_text}
+                                </Typography>
+                              </Paper>
+                            ))}
+                          </Box>
+                          <Divider sx={{ my: 2, borderColor: 'rgba(59,130,246,0.2)' }} />
+                          <Typography variant="subtitle2" sx={{ color: '#00E5FF', mb: 1 }}>
+                            Synthesized Final Answer:
+                          </Typography>
+                          <Typography whiteSpace="pre-wrap" lineHeight={1.9} variant="body1" sx={{ color: '#fff', fontSize: 17 }}>
+                            {m.content}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Typography whiteSpace="pre-wrap" lineHeight={1.9} variant="body1" sx={{ color: '#fff', fontSize: 17 }}>
+                          {m.content}
+                        </Typography>
+                      )}
+                      {m.resources && !sideBySide && (
                         <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
                           {m.resources.map((r, i) => (
                             <Stack key={i} direction="row" spacing={1} sx={{ mt: 0.75 }} alignItems="center">

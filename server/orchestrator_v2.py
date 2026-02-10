@@ -22,6 +22,7 @@ from server.providers import (
     CohereProvider,
     HuggingFaceProvider,
 )
+from server.services.key_pool_manager import get_key_pool_manager
 
 # ==================== SETTINGS ====================
 
@@ -42,7 +43,7 @@ SYNTH_MAX_CHARS_PER_PROVIDER = int(os.getenv("SYNTH_MAX_CHARS_PER_PROVIDER", "18
 ERROR_MAX_CHARS = int(os.getenv("ERROR_MAX_CHARS", "140"))
 
 # Only transient errors should be retried / trip the circuit breaker
-RETRYABLE_ERROR_TYPES = {"timeout", "rate_limited", "provider_down"}
+RETRYABLE_ERROR_TYPES = {"timeout", "rate_limited", "provider_down", "unauthorized"}
 BREAKABLE_ERROR_TYPES = {"timeout", "rate_limited", "provider_down"}
 
 
@@ -162,24 +163,49 @@ PROVIDER_CONFIGS = {
     },
 }
 
-PROVIDERS: Dict[str, Any] = {}
-for provider_id, config in PROVIDER_CONFIGS.items():
-    if ENABLED_PROVIDERS is not None and provider_id not in ENABLED_PROVIDERS:
-        continue
+def _initialize_providers() -> Dict[str, Any]:
+    """Initialize providers with multi-key support from KeyPoolManager"""
+    providers = {}
+    key_pool = get_key_pool_manager()
+    
+    for provider_id, config in PROVIDER_CONFIGS.items():
+        if ENABLED_PROVIDERS is not None and provider_id not in ENABLED_PROVIDERS:
+            continue
 
-    api_key = os.getenv(config["api_key_env"])
-    if not api_key:
-        PROVIDER_MISSING_KEYS.add(provider_id)
-        continue
+        # Try to get keys from key pool manager first (multi-key support)
+        try:
+            if key_pool.is_key_available(provider_id):
+                all_keys = key_pool.get_all_keys(provider_id)
+                api_key = all_keys[0]  # Use first key as primary
+                
+                print(f"✓ {provider_id.upper()}: Initializing with {len(all_keys)} API key(s)")
+                
+                try:
+                    if provider_id == "huggingface":
+                        providers[provider_id] = config["class"](
+                            api_key=api_key, 
+                            model_id=config["default_model"],
+                            api_keys=all_keys  # Pass all keys for rotation
+                        )
+                    else:
+                        providers[provider_id] = config["class"](
+                            api_key=api_key, 
+                            model_name=config["default_model"],
+                            api_keys=all_keys  # Pass all keys for rotation
+                        )
+                except Exception as e:
+                    PROVIDER_INIT_ERRORS[provider_id] = str(e)
+                    print(f"Warning: Failed to initialize {provider_id}: {e}")
+            else:
+                PROVIDER_MISSING_KEYS.add(provider_id)
+                
+        except Exception as e:
+            PROVIDER_MISSING_KEYS.add(provider_id)
+            print(f"⚠ {provider_id.upper()}: No API keys configured")
+    
+    return providers
 
-    try:
-        if provider_id == "huggingface":
-            PROVIDERS[provider_id] = config["class"](api_key=api_key, model_id=config["default_model"])
-        else:
-            PROVIDERS[provider_id] = config["class"](api_key=api_key, model_name=config["default_model"])
-    except Exception as e:
-        PROVIDER_INIT_ERRORS[provider_id] = str(e)
-        print(f"Warning: Failed to initialize {provider_id}: {e}")
+PROVIDERS = _initialize_providers()
 
 
 # ==================== CORE QUERY EXECUTION ====================
@@ -233,7 +259,17 @@ async def _query_with_retries(
             }
 
         if result.get("status") == "success":
-            PROVIDER_STATE[provider_id] = {"fail_count": 0.0, "cooldown_until": 0.0}
+            # Provider health decay: slow responses (>400ms) prevent full fail_count reset
+            rt = result.get("response_time_ms", 0)
+            if rt > 400:
+                current_state = PROVIDER_STATE.get(provider_id, {"fail_count": 0.0, "cooldown_until": 0.0})
+                # Add 0.2 to fail_count, capped just below CIRCUIT_FAILS to not trip it immediately
+                # but making it easier to trip if next ones fail.
+                new_fail_count = min(float(current_state.get("fail_count", 0.0)) + 0.2, float(CIRCUIT_FAILS) - 0.1)
+                PROVIDER_STATE[provider_id] = {"fail_count": new_fail_count, "cooldown_until": 0.0}
+            else:
+                PROVIDER_STATE[provider_id] = {"fail_count": 0.0, "cooldown_until": 0.0}
+                
             result["attempt"] = attempt
             result.setdefault("model_used", getattr(provider, "model_name", "") or getattr(provider, "model_id", ""))
             result.setdefault("provider", provider.__class__.__name__)
@@ -241,6 +277,19 @@ async def _query_with_retries(
 
         last = result
         err_type = result.get("error_type", "unknown")
+
+        # Handle key invalidation
+        if err_type == "unauthorized":
+            bad_key = provider.get_last_key_used()
+            get_key_pool_manager().mark_key_bad(provider_id, bad_key)
+            # Update provider's key list to exclude bad keys for future requests
+            remaining_keys = [k for k in provider.api_keys if k != bad_key]
+            if remaining_keys:
+                provider.api_keys = remaining_keys
+                provider.current_key_index = 0
+            else:
+                # No keys left, stop retrying this provider
+                break
 
         if err_type not in RETRYABLE_ERROR_TYPES or attempt > max_retries:
             break

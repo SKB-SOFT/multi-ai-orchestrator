@@ -47,6 +47,8 @@ class User(Base):
     signup_date = Column(DateTime, default=func.now())
     quota_daily = Column(Integer, default=50)
     theme = Column(String, default='dark')
+    consent_research = Column(Boolean, default=True)
+    anonymize_data = Column(Boolean, default=False)
 
 class Query(Base):
     __tablename__ = "queries"

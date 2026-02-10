@@ -3,7 +3,7 @@ Dashboard API Routes for Multi-AI Orchestrator
 Provides real-time system monitoring, agent status, and error tracking
 """
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, Depends
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -13,6 +13,9 @@ import time
 import psutil
 import asyncio
 from enum import Enum
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, cast, Float
+from server.db import get_db, Query as DBQuery, Response as DBResponse
 from server.services.metrics_db import MetricsDB
 
 # ==================== MODELS ====================
@@ -232,6 +235,36 @@ async def get_agents():
 async def get_errors(limit: int = 50):
     """Get error log."""
     return {"errors": dashboard_state.get_error_log(limit)}
+
+@router.get("/cache-stats")
+async def get_cache_stats(db: AsyncSession = Depends(get_db)):
+    """Get cache hit rates by domain for research paper."""
+    try:
+        # Query to calculate cache hit rate per domain
+        stmt = (
+            select(
+                DBQuery.domain, 
+                func.avg(cast(DBResponse.cached, Float)).label("hit_rate"),
+                func.count(DBQuery.query_id).label("total_queries")
+            )
+            .join(DBResponse, DBQuery.query_id == DBResponse.query_id)
+            .group_by(DBQuery.domain)
+        )
+        result = await db.execute(stmt)
+        stats = result.all()
+        
+        return {
+            "stats": [
+                {
+                    "domain": row.domain,
+                    "hit_rate": round(row.hit_rate or 0, 4),
+                    "total_queries": row.total_queries
+                }
+                for row in stats
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e), "stats": []}
 
 @router.post("/log-request")
 async def log_request(request: AgentRequest):

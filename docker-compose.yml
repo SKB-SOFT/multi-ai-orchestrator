@@ -1,26 +1,44 @@
-version: '3.8'
 services:
-  world-brain:
-    build: .
+  # Pillar 1: The API Engine (FastAPI)
+  backend:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    env_file: .env
     volumes:
-      - brain_data:/app
-      - ./brain.db:/app/brain.db  # Persist logs
+      - server_data:/app/data
+      - ./server/data/app.db:/app/data/app.db # Persist the Research database
     restart: unless-stopped
 
-  dashboard:
-    build: ./dashboard
+  # Pillar 2: The User Interface (Next.js)
+  frontend:
+    build: 
+      context: ./client
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
-      - "5173:5173"
-    volumes:
-      - ./dashboard:/app
-      - /app/node_modules
-    restart: unless-stopped
+      - "3000:3000"
     depends_on:
-      - world-brain
+      - backend
+    restart: unless-stopped
+
+  # Pillar 3: Research & Evaluation (Streamlit)
+  research-ui:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    command: streamlit run scripts/human_eval_ui.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      - server_data:/app/data
+      - ./server/data/app.db:/app/data/app.db
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
-  brain_data:
+  server_data:
+

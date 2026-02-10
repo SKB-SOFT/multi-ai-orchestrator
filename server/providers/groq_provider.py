@@ -1,30 +1,34 @@
 import asyncio
 import aiohttp
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 import time
 from .base_provider import BaseProvider
 
 class GroqProvider(BaseProvider):
     """
     Groq Cloud LLM Provider - Fastest LLM inference
-    Free tier: 14,400 requests/day, 6K tokens/min
-    No credit card required
+    Free tier: 14,400 requests/day, 6K tokens/min per key
+    Supports multiple API keys with automatic rotation
     
     Docs: https://console.groq.com/docs/speech-text
     """
     
-    def __init__(self, api_key: str, model_name: str = "mixtral-8x7b-32768"):
-        super().__init__(api_key, model_name)
+    def __init__(self, api_key: str, model_name: str = "mixtral-8x7b-32768", api_keys: Optional[List[str]] = None):
+        super().__init__(api_key, model_name, api_keys)
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers with current API key"""
+        return {
+            "Authorization": f"Bearer {self.get_next_key()}",
             "Content-Type": "application/json",
         }
     
     async def query(self, prompt: str, timeout: int = 30) -> Dict[str, Any]:
         """
         Query Groq API with streaming support.
+        Uses round-robin key rotation for multiple API keys.
         """
         start_time = time.time()
         
@@ -44,7 +48,7 @@ class GroqProvider(BaseProvider):
                 async with session.post(
                     self.base_url,
                     json=payload,
-                    headers=self.headers,
+                    headers=self._get_headers(),
                     timeout=aiohttp.ClientTimeout(total=timeout)
                 ) as response:
                     response_time_ms = (time.time() - start_time) * 1000
@@ -61,23 +65,39 @@ class GroqProvider(BaseProvider):
                         )
                     else:
                         error_text = await response.text()
+                        error_type = "unknown"
+                        if response.status in (401, 403):
+                            error_type = "unauthorized"
+                        elif response.status == 429:
+                            error_type = "rate_limited"
+                        elif response.status >= 500:
+                            error_type = "provider_down"
+                            
                         return self.format_error(
                             error_message=f"HTTP {response.status}: {error_text[:100]}",
-                            response_time_ms=response_time_ms
+                            response_time_ms=response_time_ms,
+                            error_type=error_type
                         )
         
         except asyncio.TimeoutError:
             response_time_ms = (time.time() - start_time) * 1000
             return self.format_error(
                 error_message="Request timeout (30s)",
-                response_time_ms=response_time_ms
+                response_time_ms=response_time_ms,
+                error_type="timeout"
             )
         
         except Exception as e:
             response_time_ms = (time.time() - start_time) * 1000
+            error_msg = str(e)
+            error_type = "unknown"
+            if "connection" in error_msg.lower():
+                error_type = "provider_down"
+                
             return self.format_error(
-                error_message=f"Groq Error: {str(e)[:100]}",
-                response_time_ms=response_time_ms
+                error_message=f"Groq Error: {error_msg[:100]}",
+                response_time_ms=response_time_ms,
+                error_type=error_type
             )
     
     async def validate_key(self) -> bool:

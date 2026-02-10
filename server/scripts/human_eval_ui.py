@@ -12,7 +12,17 @@ def _normalize_db_url(raw_url: str) -> str:
 
 
 def _get_engine():
-    raw_url = os.getenv("DATABASE_URL", "sqlite:///../data/app.db")
+    raw_url = os.getenv("DATABASE_URL")
+    if not raw_url:
+        # Check common locations for app.db
+        candidates = ["app.db", "server/data/app.db", "data/app.db", "../data/app.db"]
+        db_path = "app.db"
+        for c in candidates:
+            if os.path.exists(c):
+                db_path = c
+                break
+        raw_url = f"sqlite:///{db_path}"
+    
     url = _normalize_db_url(raw_url)
     return create_engine(url)
 

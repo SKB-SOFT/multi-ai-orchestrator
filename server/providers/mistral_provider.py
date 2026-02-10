@@ -1,26 +1,27 @@
 import asyncio
 import aiohttp
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import time
 from .base_provider import BaseProvider
 
 class MistralProvider(BaseProvider):
     """
     Mistral AI Provider - Open models with strong reasoning
-    Free tier: 1 req/sec, 500K tokens/month
-    No credit card required
+    Free tier: 1 req/sec, 500K tokens/month per key
+    Supports multiple API keys with automatic rotation
     
     Docs: https://docs.mistral.ai/capabilities/function_calling/
     """
     
-    def __init__(self, api_key: str, model_name: str = "mistral-large-latest"):
-        super().__init__(api_key, model_name)
+    def __init__(self, api_key: str, model_name: str = "mistral-large-latest", api_keys: Optional[List[str]] = None):
+        super().__init__(api_key, model_name, api_keys)
         self.base_url = "https://api.mistral.ai/v1/chat/completions"
     
     async def query(self, prompt: str, timeout: int = 30) -> Dict[str, Any]:
         """
         Query Mistral API with OpenAI-compatible interface.
+        Uses round-robin key rotation for multiple API keys.
         """
         start_time = time.time()
         
@@ -42,7 +43,7 @@ class MistralProvider(BaseProvider):
         }
         
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self.get_next_key()}",
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -74,23 +75,39 @@ class MistralProvider(BaseProvider):
                         )
                     else:
                         error_text = await response.text()
+                        error_type = "unknown"
+                        if response.status in (401, 403):
+                            error_type = "unauthorized"
+                        elif response.status == 429:
+                            error_type = "rate_limited"
+                        elif response.status >= 500:
+                            error_type = "provider_down"
+                        
                         return self.format_error(
                             error_message=f"HTTP {response.status}: {error_text[:100]}",
-                            response_time_ms=response_time_ms
+                            response_time_ms=response_time_ms,
+                            error_type=error_type
                         )
         
         except asyncio.TimeoutError:
             response_time_ms = (time.time() - start_time) * 1000
             return self.format_error(
                 error_message="Request timeout (30s)",
-                response_time_ms=response_time_ms
+                response_time_ms=response_time_ms,
+                error_type="timeout"
             )
         
         except Exception as e:
             response_time_ms = (time.time() - start_time) * 1000
+            error_msg = str(e)
+            error_type = "unknown"
+            if "connection" in error_msg.lower():
+                error_type = "provider_down"
+                
             return self.format_error(
-                error_message=f"Mistral Error: {str(e)[:100]}",
-                response_time_ms=response_time_ms
+                error_message=f"Mistral Error: {error_msg[:100]}",
+                response_time_ms=response_time_ms,
+                error_type=error_type
             )
     
     async def validate_key(self) -> bool:
