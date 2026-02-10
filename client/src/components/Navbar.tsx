@@ -60,10 +60,4 @@ export function Navbar() {
         <CommandPalette />
       </>
     )
-          )}
-        </div>
-      </div>
-      <CommandPalette />
-    </nav>
-  )
 }
