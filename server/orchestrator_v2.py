@@ -39,6 +39,16 @@ HARD_DEADLINE_BUFFER_S = int(os.getenv("HARD_DEADLINE_BUFFER_S", "10"))
 SYNTH_TIMEOUT_S = int(os.getenv("SYNTH_TIMEOUT_S", "30"))
 SYNTH_MAX_CHARS_PER_PROVIDER = int(os.getenv("SYNTH_MAX_CHARS_PER_PROVIDER", "1800"))
 
+# Per-provider prompts
+PROVIDER_PROMPTS = {
+    "default": "Deep research answer only: {query}",
+    "groq": "Provide a fast, factual, and concise answer to: {query}",
+    "gemini": "Provide a detailed, well-structured, and comprehensive explanation for: {query}",
+    "mistral": "Give a structured, analytical, and clear answer to: {query}",
+    "cerebras": "Explore creative alternatives and provide an insightful, out-of-the-box response to: {query}",
+    "cohere": "Summarize the key points and provide an actionable answer for: {query}",
+}
+
 # Errors
 ERROR_MAX_CHARS = int(os.getenv("ERROR_MAX_CHARS", "140"))
 
@@ -212,11 +222,15 @@ PROVIDERS = _initialize_providers()
 
 async def _query_with_retries(
     provider_id: str,
-    prompt: str,
+    prompt: str, # Note: this is now the base query, not the full prompt
     timeout: int,
     max_retries: int = DEFAULT_MAX_RETRIES,
 ) -> Dict[str, Any]:
     provider = PROVIDERS[provider_id]
+
+    # Build specialized prompt
+    prompt_template = PROVIDER_PROMPTS.get(provider_id, PROVIDER_PROMPTS["default"])
+    specialized_prompt = prompt_template.format(query=prompt)
 
     # circuit breaker check
     state = PROVIDER_STATE.get(provider_id, {"fail_count": 0.0, "cooldown_until": 0.0})
@@ -242,7 +256,7 @@ async def _query_with_retries(
     while attempt <= max_retries:
         attempt += 1
         try:
-            result = await provider.query(prompt, timeout=timeout)
+            result = await provider.query(specialized_prompt, timeout=timeout)
         except asyncio.TimeoutError:
             result = {
                 "status": "error",

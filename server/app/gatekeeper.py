@@ -2,10 +2,21 @@ import os
 from typing import List
 
 class Gatekeeper:
-    def __init__(self):
-        self.reject_patterns = os.getenv("REJECT_PATTERNS", "pizza|weather|jokes|dress|favorite|recipe|outfit|football|music|restaurant").split("|")
-        self.pass_patterns = os.getenv("PASS_PATTERNS", "analyze|compare|research|model|vs|explain|how|why|architecture|algorithm").split("|")
     def is_research_query(self, query: str) -> bool:
+        """
+        Determines if a query is complex enough for research.
+        - Word count > 5
+        - Ends with "?" OR contains a question word.
+        """
+        words = query.split()
+        if len(words) <= 5:
+            return False
+
         query_lower = query.lower()
-        return (not any(p in query_lower for p in self.reject_patterns) and any(p in query_lower for p in self.pass_patterns))
+        question_words = ["explain", "compare", "why", "how", "what"]
+        
+        if query.strip().endswith("?") or any(word in query_lower for word in question_words):
+            return True
+            
+        return False
 gatekeeper = Gatekeeper()

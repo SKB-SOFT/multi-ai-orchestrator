@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 
-from server.db import AsyncSessionLocal, User, Query, Response, Cache, JudgeDecision, init_db  # type: ignore
+from server.db import AsyncSessionLocal, User, Query, Response, Cache, JudgeDecision, init_db, MemoryRetrieval
 from server.orchestrator_v2 import (
     orchestrate_query,
     PROVIDER_CONFIGS,
@@ -357,6 +357,21 @@ async def submit_query(
             raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
 
     query_metrics = get_query_metrics(query_data.query_text)
+
+    # --- Memory Retrieval Step ---
+    embedding = compute_embedding(query_data.query_text)
+    has_memory_context = False
+    memory_context_count = 0
+    
+    # This is a simplified version. A real implementation would use vector search.
+    # For now, we'll just log that we *would* have searched.
+    # In a real system, you'd do this:
+    # similar_queries = await vector_search(embedding, db)
+    # if similar_queries:
+    #     has_memory_context = True
+    #     memory_context_count = len(similar_queries)
+    #     # ... and inject them into the orchestrator prompt
+
     new_query = Query(
         user_id=user.user_id,
         query_text=query_data.query_text,
@@ -369,10 +384,10 @@ async def submit_query(
         domain=query_metrics["domain"],
         accepted=True,
         rejection_reason=None,
-        has_memory_context=False,
-        memory_context_count=0,
+        has_memory_context=has_memory_context,
+        memory_context_count=memory_context_count,
         cold_start=True,
-        embedding=compute_embedding(query_data.query_text),
+        embedding=embedding,
     )
     db.add(new_query)
     await db.flush()

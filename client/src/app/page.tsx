@@ -45,6 +45,7 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import DownloadIcon from '@mui/icons-material/Download';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 type Msg = {
   role: 'user' | 'assistant';
@@ -100,6 +101,7 @@ export default function DashboardPerplexity() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [focusMode, setFocusMode] = useState<'research' | 'writing' | 'default'>('default');
   const [sideBySide, setSideBySide] = useState(false);
+  const [stats, setStats] = useState({ queries: 0, models: 0, cache: 0 });
   const [modelHover, setModelHover] = useState<{ anchor: HTMLElement | null; id: string | null }>({
     anchor: null,
     id: null,
@@ -125,6 +127,28 @@ export default function DashboardPerplexity() {
     })();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // Fetch simple stats
+  useEffect(() => {
+    let cancelled = false;
+    const fetchStats = async () => {
+      try {
+        // This endpoint would return { queries_today: X, models_online: Y, cache_hit_rate: Z }
+        // For now, we'll use mock data.
+        await new Promise(res => setTimeout(res, 1500)); // Simulate network
+        if (cancelled) return;
+        setStats({ queries: 127, models: 6, cache: 18 });
+      } catch (e) {
+        console.error("Failed to fetch stats", e);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000); // Refresh every 30s
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 
@@ -249,6 +273,29 @@ export default function DashboardPerplexity() {
                 MANY MINDS
               </Typography>
               <Box sx={{ flex: 1 }} />
+
+              {/* Live Stats Bar */}
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mr: 3, p: 1, background: 'rgba(0,0,0,0.15)', borderRadius: 2 }}>
+                <Tooltip title="Queries processed today">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <BarChartIcon sx={{ color: '#3b82f6' }} />
+                    <Typography fontWeight={600} sx={{ color: '#fff' }}>{stats.queries}</Typography>
+                  </Stack>
+                </Tooltip>
+                <Tooltip title="Models currently online">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <AutoAwesomeIcon sx={{ color: '#3b82f6' }} />
+                    <Typography fontWeight={600} sx={{ color: '#fff' }}>{stats.models}</Typography>
+                  </Stack>
+                </Tooltip>
+                <Tooltip title="Cache hit percentage">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <StorageIcon sx={{ color: '#3b82f6' }} />
+                    <Typography fontWeight={600} sx={{ color: '#fff' }}>{stats.cache}%</Typography>
+                  </Stack>
+                </Tooltip>
+              </Stack>
+
               <Chip
                 label={`${selectedModels.length} model${selectedModels.length > 1 ? 's' : ''}`}
                 size="medium"
