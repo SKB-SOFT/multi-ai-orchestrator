@@ -60,7 +60,7 @@ export default function DashboardOverview() {
 
       {/* KPI Cards */}
       <Grid container spacing={3} sx={{ mb: 5 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             label="Total Users"
             value={mockUsersData.totalUsers.toLocaleString()}
@@ -68,7 +68,7 @@ export default function DashboardOverview() {
             chipColor="success"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             label="Active Users"
             value={mockUsersData.activeUsers.toLocaleString()}
@@ -76,7 +76,7 @@ export default function DashboardOverview() {
             chipColor="primary"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             label="New Today"
             value={mockUsersData.newUsersToday}
@@ -84,7 +84,7 @@ export default function DashboardOverview() {
             chipColor="success"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             label="Retention"
             value={`${mockUsersData.retentionRate}%`}
@@ -96,7 +96,7 @@ export default function DashboardOverview() {
 
       {/* Charts Row */}
       <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Paper sx={{ 
             p: { xs: 3, sm: 4 }, 
             minHeight: 420, 
@@ -122,7 +122,7 @@ export default function DashboardOverview() {
           </Paper>
         </Grid>
         
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ 
             p: 4, 
             height: 480,
@@ -143,7 +143,7 @@ export default function DashboardOverview() {
 
       {/* Bottom Row */}
       <Grid container spacing={{ xs: 2, md: 3 }}>
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Paper sx={{ 
             p: { xs: 3, sm: 4 }, 
             boxShadow: 4,
@@ -190,7 +190,7 @@ export default function DashboardOverview() {
           </Paper>
         </Grid>
         
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ 
             p: 4, 
             height: '100%',

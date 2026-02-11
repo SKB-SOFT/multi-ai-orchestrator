@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Multi-AI Orchestrator",
+  title: "Many Minds",
   description: "Query multiple AI models at once",
 }
 

@@ -88,7 +88,6 @@ export default function CountryPie({ data }: CountryPieProps) {
             ]}
             height={280}
             width={280}
-            hideLegend
           >
             <PieCenterLabel primaryText={`${(total / 1000).toFixed(1)}K`} secondaryText="Total" />
           </PieChart>
